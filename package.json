@@ -1,0 +1,26 @@
+{
+  "name": "image_convert",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "gif.js": "^0.2.0",
+    "jszip": "^3.10.1",
+    "vue": "^3.2.47",
+    "webpxmux": "^0.0.2",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.5",
+    "@vitejs/plugin-vue": "^4.1.0",
+    "typescript": "^5.0.2",
+    "vite": "^4.3.2",
+    "vue-tsc": "^1.4.2"
+  }
+}
