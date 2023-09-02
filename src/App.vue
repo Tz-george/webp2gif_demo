@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import {ref, reactive, computed} from "vue";
+import { ref, reactive, computed } from "vue";
 import JSZip from 'jszip'
 import {saveAs} from 'file-saver';
 import WebPXMux, {Frame, Frames} from 'webpxmux'
 import GIF from 'gif.js'
-
-
-const zip = new JSZip()
 
 const xMux = WebPXMux("./webpxmux.wasm")
 
@@ -14,16 +11,14 @@ const type = {
   mimeType: 'image/gif',
   ext: '.gif'
 }
+const converted: { fileName: string, blob: Blob }[] = []
 
 async function onFileSelect(event: InputEvent) {
   const files = (event.target as HTMLInputElement).files
   if (!files || files.length < 1) {
     return
   }
-  await Promise.all(Array.from(files).map(async (file: File) => {
-    const { fileName, blob } = await convert(file)
-    zip.file(fileName, blob)
-  }))
+  await Promise.all(Array.from(files).map((file: File) => convert(file)))
   save()
 }
 
@@ -43,8 +38,8 @@ function fileReader(file: File): Promise<Uint8Array> {
 async function convert(file: File) {
   const frames = await decode(file)
   const fileName = file.name.split('.').shift()!
-  const blob = await drawFrames(frames)
-  return { fileName, blob }
+  const blob = await drawFrames(frames, fileName)
+  return {fileName, blob}
 }
 
 // 解码
@@ -55,7 +50,7 @@ async function decode(file: File) {
   return frames
 }
 
-function drawFrames(frames: Frames) {
+function drawFrames(frames: Frames, fileName: string) {
   if (frames.frameCount < 1) {
     return
   }
@@ -74,24 +69,22 @@ function drawFrames(frames: Frames) {
     })
     for (let i = 0; i < frames.frameCount; i++) {
       const frame = frames.frames[i]
-      clearCanvas(ctx, width, height, frames.bgColor)
+      ctx.clearRect(0, 0, width, height)
+      const {r, g, b, a} = getRGBA(frames.bgColor)
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`
+      ctx.fillRect(0, 0, width, height)
       drawFrame(frame, width, height, ctx)
       gif.addFrame(ctx, {copy: true, delay: i === 0 ? 0.00000001 : frame.duration})
     }
     gif.on('finished', function (blob: Blob) {
+      converted.push({ fileName, blob })
       resolve({
+        fileName,
         blob,
       })
     })
     gif.render()
   })
-}
-
-function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: number, bgColor: number = 0xffffffff) {
-  ctx.clearRect(0, 0, width, height)
-  const {r, g, b, a} = getRGBA(bgColor)
-  ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`
-  ctx.fillRect(0, 0, width, height)
 }
 
 function canvasFactory(width: number, height: number): HTMLCanvasElement {
@@ -130,6 +123,10 @@ function getRGBA(uint32: number): { r: number, g: number, b: number, a: number }
 }
 
 function save() {
+  const zip = new JSZip()
+  for (const convert of converted) {
+    zip.file(convert.fileName + type.ext, convert.blob)
+  }
   zip.generateAsync({type: 'blob'})
       .then((content) => {
         saveAs(content, 'results.zip')
